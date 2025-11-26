@@ -1,0 +1,14 @@
+target/
+.idea/
+.vscode/
+*.iml
+*.log
+*.class
+.DS_Store
+
+# OS/Editor
+Thumbs.db
+
+# Application
+application.yml
+application-local.yml
