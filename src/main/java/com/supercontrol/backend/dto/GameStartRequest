@@ -1,0 +1,11 @@
+package com.supercontrol.backend.dto;
+
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class GameStartRequest {
+    private Long machineId;
+    private Long userId;
+}

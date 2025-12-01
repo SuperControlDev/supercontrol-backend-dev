@@ -1,0 +1,87 @@
+package com.supercontrol.backend.service;
+
+import com.supercontrol.backend.domain.Machine;
+import com.supercontrol.backend.domain.PlaySession;
+import com.supercontrol.backend.domain.User;
+import com.supercontrol.backend.dto.GameStartRequest;
+import com.supercontrol.backend.dto.GameStartResponse;
+import com.supercontrol.backend.repository.MachineRepository;
+import com.supercontrol.backend.repository.PlaySessionRepository;
+import com.supercontrol.backend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class GameService {
+
+    private final UserRepository userRepository;
+    private final MachineRepository machineRepository;
+    private final PlaySessionRepository sessionRepository;
+
+    public GameStartResponse start(GameStartRequest req) {
+
+        Optional<User> userOpt = userRepository.findById(req.getUserId());
+        Optional<Machine> machineOpt = machineRepository.findById(req.getMachineId());
+
+        if (userOpt.isEmpty() || machineOpt.isEmpty()) {
+            return GameStartResponse.builder()
+                    .success(false)
+                    .message("USER_OR_MACHINE_NOT_FOUND")
+                    .build();
+        }
+
+        User user = userOpt.get();
+        Machine machine = machineOpt.get();
+
+        // 코인 부족
+        if (user.getBalance() < machine.getPrice()) {
+            return GameStartResponse.builder()
+                    .success(false)
+                    .message("NOT_ENOUGH_BALANCE")
+                    .build();
+        }
+
+        // 기계가 비어있는지 확인
+        if (machine.getStatus() != Machine.Status.AVAILABLE) {
+            return GameStartResponse.builder()
+                    .success(false)
+                    .message("MACHINE_BUSY")
+                    .build();
+        }
+
+        // 코인 차감
+        user.setBalance(user.getBalance() - machine.getPrice());
+        userRepository.save(user);
+
+        // 기계 상태 변경
+        machine.setStatus(Machine.Status.BUSY);
+        machineRepository.save(machine);
+
+        // 세션 생성
+        String sessionId = UUID.randomUUID().toString();
+
+        PlaySession session = PlaySession.builder()
+                .machineId(req.getMachineId())
+                .userId(req.getUserId())
+                .sessionId(sessionId)
+                .startedAt(LocalDateTime.now())
+                .success(false)
+                .build();
+
+        sessionRepository.save(session);
+
+        // 게임 플레이 시간 (ex: 45초)
+        int remainingTime = 45;
+
+        return GameStartResponse.builder()
+                .sessionId(sessionId)
+                .remainingTime(remainingTime)
+                .success(true)
+                .build();
+    }
+}
