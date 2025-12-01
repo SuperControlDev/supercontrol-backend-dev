@@ -1,42 +1,24 @@
 package com.supercontrol.backend.controller;
 
-import lombok.*;
+import com.supercontrol.backend.dto.GameStartRequest;
+import com.supercontrol.backend.dto.GameStartResponse;
+import com.supercontrol.backend.service.GameService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/game")
+@RequiredArgsConstructor
 public class GameController {
 
+    private final GameService gameService;
+
     @PostMapping("/start")
-    public GameStartResponse start(@RequestBody GameStartRequest req) {
-        // TODO: 코인 차감 & 세션 연동
-        long now = System.currentTimeMillis();
-        int duration = 15;
+    public GameStartResponse startGame(@RequestBody GameStartRequest request) {
 
-        return GameStartResponse.builder()
-                .success(true)
-                .remainingCoins(90) // 임시 값
-                .gameStartTime(now)
-                .durationSec(duration)
-                .build();
-    }
+        System.out.println("🔥 GameController /start 호출됨");
+        System.out.println("🔥 유저: " + request.getUserId() + ", 머신: " + request.getMachineId());
 
-    @Getter @Setter
-    public static class GameStartRequest {
-        private String sessionId;
-        private int machineId;
-        private String userId;
-    }
-
-    @Getter
-    @Setter
-    @Builder
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class GameStartResponse {
-        private boolean success;
-        private int remainingCoins;
-        private long gameStartTime;
-        private int durationSec;
+        return gameService.startGame(request);
     }
 }
