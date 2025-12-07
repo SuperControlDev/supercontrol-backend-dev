@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "T_L_USERS")
+@Table(name = "t_l_users")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,7 +16,7 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long userId;
+    private String userId;
 
     private String username;
 
@@ -38,4 +38,13 @@ public class User {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    @Column(name = "free_tickets")
+    private int freeTickets;
+
+    @Column(name = "paid_tickets")
+    private int paidTickets;
+
+    @Column(name = "country_code")
+    private String countryCode;
 }

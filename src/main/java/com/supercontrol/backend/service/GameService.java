@@ -8,11 +8,11 @@ import com.supercontrol.backend.dto.GameStartResponse;
 import com.supercontrol.backend.repository.MachineRepository;
 import com.supercontrol.backend.repository.UserRepository;
 import com.supercontrol.backend.repository.PlaySessionRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -51,7 +51,7 @@ public class GameService {
                 user.setBalance(user.getBalance() - machine.getPrice());
                 userRepository.save(user);
 
-                // 5) 플레이 세션 생성
+                // 5) 플레이 세션 생성 (durationSec = 45초 고정)
                 PlaySession session = PlaySession.builder()
                                 .user(user)
                                 .machine(machine)
@@ -60,18 +60,21 @@ public class GameService {
                                 .status("active")
                                 .durationSec(45)
                                 .build();
+
                 playSessionRepository.save(session);
 
-                // 6) 정상 Response
+                // 6) Response 생성
+                long startTimeMillis = session.getStartTime()
+                                .atZone(ZoneId.systemDefault())
+                                .toInstant()
+                                .toEpochMilli();
+
                 return GameStartResponse.builder()
                                 .success(true)
                                 .remainingCoins(user.getBalance())
-                                .gameStartTime(session.getStartTime()
-                                                .atZone(ZoneId.systemDefault())
-                                                .toInstant().toEpochMilli())
+                                .gameStartTime(startTimeMillis)
                                 .durationSec(session.getDurationSec())
                                 .sessionId(session.getSessionId())
                                 .build();
-
         }
 }

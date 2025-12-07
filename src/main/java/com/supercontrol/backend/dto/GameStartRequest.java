@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class GameStartRequest {
-    private Long userId;
+    private String userId;
     private Long machineId;
 }
