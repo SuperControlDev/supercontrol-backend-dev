@@ -17,7 +17,7 @@ public class AuthService {
     private final OAuthIdentityRepository oauthRepository;
 
     @Transactional
-    public AuthResponse login(String provider, String providerUserId) {
+    public AuthResponse login(String provider, String providerUserId, String username) {
 
         // 1️⃣ 기존 OAuth 사용자 조회 (null 가능)
         OAuthIdentity oauth = oauthRepository.findByProviderTypeAndProviderUserId(
@@ -34,9 +34,14 @@ public class AuthService {
 
             user = new User();
             user.setUserId(userId); // ⭐⭐⭐ 반드시 필요
-            user.setUsername(provider + " User");
+            // user.setUsername(provider + " User");
+            user.setUsername(
+                    username != null && !username.isBlank()
+                            ? username
+                            : provider + " User");
             user.setProvider(provider);
             user.setBalance(0);
+            user.setFreeTickets(5);
 
             userRepository.save(user);
 

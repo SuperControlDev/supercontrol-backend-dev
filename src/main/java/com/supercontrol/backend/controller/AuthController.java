@@ -21,7 +21,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> oauthLogin(
             @PathVariable String provider,
             @RequestBody OAuthLoginRequest request) {
-        AuthResponse response = authService.login(provider, request.getProviderUserId());
+        AuthResponse response = authService.login(provider, request.getProviderUserId(), request.getUsername());
 
         return ResponseEntity.ok(response);
     }

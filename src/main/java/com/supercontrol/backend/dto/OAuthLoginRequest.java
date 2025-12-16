@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class OAuthLoginRequest {
     private String providerUserId;
+    private String username;
 
     public String getProviderUserId() {
         return providerUserId;
@@ -14,5 +15,13 @@ public class OAuthLoginRequest {
 
     public void setProviderUserId(String providerUserId) {
         this.providerUserId = providerUserId;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 }
