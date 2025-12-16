@@ -2,9 +2,10 @@ package com.supercontrol.backend.service;
 
 import com.supercontrol.backend.domain.OAuthIdentity;
 import com.supercontrol.backend.domain.User;
-import com.supercontrol.backend.dto.AuthRequest;
+import com.supercontrol.backend.dto.AuthResponse;
 import com.supercontrol.backend.repository.OAuthIdentityRepository;
 import com.supercontrol.backend.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,37 +14,55 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final OAuthIdentityRepository oauthIdentityRepository;
+    private final OAuthIdentityRepository oauthRepository;
 
-    public User login(String provider, AuthRequest request) {
+    @Transactional
+    public AuthResponse login(String provider, String providerUserId) {
 
-        String providerType = provider.toLowerCase();
-        String providerUserId = request.getProviderUserId();
+        // 1️⃣ 기존 OAuth 사용자 조회 (null 가능)
+        OAuthIdentity oauth = oauthRepository.findByProviderTypeAndProviderUserId(
+                provider, providerUserId);
 
-        // 1) OAuthIdentity 조회 (이미 가입된 사용자)
-        OAuthIdentity identity = oauthIdentityRepository.findByProviderTypeAndProviderUserId(providerType,
-                providerUserId);
+        User user;
 
-        if (identity != null) {
-            return identity.getUser(); // 기존 회원
+        if (oauth != null) {
+            // 2️⃣ 기존 사용자
+            user = oauth.getUser();
+        } else {
+            // 3️⃣ 신규 사용자 생성
+            String userId = generateUserId(provider, providerUserId);
+
+            user = new User();
+            user.setUserId(userId); // ⭐⭐⭐ 반드시 필요
+            user.setUsername(provider + " User");
+            user.setProvider(provider);
+            user.setBalance(0);
+
+            userRepository.save(user);
+
+            // 4️⃣ OAuthIdentity 생성
+            OAuthIdentity newOauth = new OAuthIdentity();
+            newOauth.setProviderType(provider);
+            newOauth.setProviderUserId(providerUserId);
+            newOauth.setUser(user);
+
+            oauthRepository.save(newOauth);
         }
 
-        // 2) 신규 User 생성
-        User newUser = User.builder()
-                .username(providerType + "_" + providerUserId)
-                .provider(providerType)
-                .balance(0)
-                .build();
-        userRepository.save(newUser);
+        // 5️⃣ 프론트 응답
+        return new AuthResponse(
+                user.getUserId(),
+                user.getUsername(),
+                user.getProvider());
+    }
 
-        // 3) OAuthIdentity 연결 저장
-        OAuthIdentity newIdentity = OAuthIdentity.builder()
-                .user(newUser)
-                .providerType(providerType)
-                .providerUserId(providerUserId)
-                .build();
-        oauthIdentityRepository.save(newIdentity);
-
-        return newUser;
+    /**
+     * providerUserId가 이미 google_xxx 형태로 오는 경우 중복 방지
+     */
+    private String generateUserId(String provider, String providerUserId) {
+        if (providerUserId.startsWith(provider + "_")) {
+            return providerUserId;
+        }
+        return provider + "_" + providerUserId;
     }
 }

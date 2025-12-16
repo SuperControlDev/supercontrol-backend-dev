@@ -15,14 +15,17 @@ import java.time.LocalDateTime;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id", nullable = false, length = 255)
     private String userId;
 
+    @Column(name = "username")
     private String username;
 
+    @Column(name = "provider")
     private String provider;
 
-    private Integer balance;
+    @Column(name = "balance")
+    private int balance;
 
     private LocalDateTime createdAt;
 
