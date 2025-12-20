@@ -60,10 +60,11 @@ public class UserService {
         return new UserProfileResponse(
                 user.getUserId(),
                 user.getUsername(),
-                // user.getEmail(),
-                // user.getNickname(),
                 user.getBalance(),
-                user.getCreatedAt());
+                user.getCreatedAt(),
+                user.getFreeTickets(),
+                user.getPaidTickets(),
+                user.getCountryCode());
     }
 
 }

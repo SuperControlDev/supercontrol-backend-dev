@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "T_L_OAUTH_IDENTITY")
+@Table(name = "t_l_oauth_identity")
 @Getter
 @Setter
 @NoArgsConstructor

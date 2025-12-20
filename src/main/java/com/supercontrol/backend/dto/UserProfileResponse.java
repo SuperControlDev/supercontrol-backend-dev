@@ -10,8 +10,9 @@ import lombok.Data;
 public class UserProfileResponse {
     private String userId;
     private String userName;
-    // private String email;
-    // private String nickname;
     private int balance;
     private LocalDateTime createdAt;
+    private int free_tickets;
+    private int paid_tickets;
+    private String country_coude;
 }

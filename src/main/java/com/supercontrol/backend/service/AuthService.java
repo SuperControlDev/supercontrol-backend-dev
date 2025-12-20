@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final UserRepository userRepository;
     private final OAuthIdentityRepository oauthRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public AuthResponse login(String provider, String providerUserId, String username) {
@@ -24,6 +24,7 @@ public class AuthService {
                 provider, providerUserId);
 
         User user;
+        System.out.println("조희승 로그 테스트 : username : " + username);
 
         if (oauth != null) {
             // 2️⃣ 기존 사용자
@@ -42,6 +43,7 @@ public class AuthService {
             user.setProvider(provider);
             user.setBalance(0);
             user.setFreeTickets(5);
+            user.setCountryCode("KR");
 
             userRepository.save(user);
 
@@ -58,7 +60,9 @@ public class AuthService {
         return new AuthResponse(
                 user.getUserId(),
                 user.getUsername(),
-                user.getProvider());
+                user.getProvider(),
+                user.getBalance(),
+                user.getFreeTickets());
     }
 
     /**
