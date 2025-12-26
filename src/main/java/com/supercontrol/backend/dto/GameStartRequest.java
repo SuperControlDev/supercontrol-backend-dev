@@ -6,4 +6,5 @@ import lombok.Data;
 public class GameStartRequest {
     private String userId;
     private Long machineId;
+    private String startToken;
 }
