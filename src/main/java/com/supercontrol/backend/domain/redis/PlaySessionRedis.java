@@ -17,7 +17,7 @@ public class PlaySessionRedis {
     private String userId;
 
     /** 머신 ID (인형뽑기 기계) */
-    private String machineId;
+    private Long machineId;
 
     /** 게임 시작 시각 (epoch millis) */
     private long startAt;

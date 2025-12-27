@@ -1,7 +1,9 @@
 package com.supercontrol.backend.controller;
 
 import com.supercontrol.backend.domain.PlaySession;
+import com.supercontrol.backend.domain.session.EndReason;
 import com.supercontrol.backend.dto.GameEndRequest;
+import com.supercontrol.backend.dto.GameEndResponse;
 import com.supercontrol.backend.dto.GameStartRequest;
 import com.supercontrol.backend.dto.GameStartResponse;
 import com.supercontrol.backend.dto.HeartbeatRequest;
@@ -38,15 +40,15 @@ public class GameController {
     }
 
     /**
-     * 게임 종료 (사용자 / FE 타이머)
+     * 게임 종료 (사용자 / FE 타이머 / 강제 종료)
+     * POST 유지 + 종료 결과 JSON 리턴
      */
     @PostMapping("/end")
-    public ResponseEntity<Void> endGame(
-            @RequestBody GameEndRequest request) {
-        gameEndService.endSession(
+    public ResponseEntity<GameEndResponse> endGame(@RequestBody GameEndRequest request) {
+        GameEndResponse resp = gameEndService.endSession(
                 request.getSessionId(),
                 request.getReason());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(resp);
     }
 
     /**

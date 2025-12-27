@@ -37,4 +37,9 @@ public class PlaySession {
 
     @Column(name = "duration_sec", nullable = false)
     private Integer durationSec;
+
+    private boolean ended;
+    private Long endedAt;
+
+    private String endReason; // USER_EXIT, TIMEOUT
 }

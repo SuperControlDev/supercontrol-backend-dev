@@ -24,7 +24,6 @@ public class AuthService {
                 provider, providerUserId);
 
         User user;
-        System.out.println("조희승 로그 테스트 : username : " + username);
 
         if (oauth != null) {
             // 2️⃣ 기존 사용자

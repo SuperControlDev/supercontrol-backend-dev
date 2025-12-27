@@ -21,7 +21,7 @@ public class AuthController {
     public ResponseEntity<AuthResponse> oauthLogin(
             @PathVariable String provider,
             @RequestBody OAuthLoginRequest request) {
-        // System.out.println("조희승 request 체크 : " + request.get)
+        // System.out.println("[SuperCon Log] request 체크 : " + request.get)
         AuthResponse response = authService.login(provider, request.getProviderUserId(), request.getUsername());
 
         return ResponseEntity.ok(response);

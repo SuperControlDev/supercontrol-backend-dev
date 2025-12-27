@@ -4,7 +4,6 @@ import com.supercontrol.backend.domain.redis.PlaySessionRedis;
 import com.supercontrol.backend.domain.session.EndReason;
 import com.supercontrol.backend.service.GameEndService;
 import com.supercontrol.backend.util.JsonUtils;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -22,8 +21,9 @@ public class HeartbeatMonitor {
     private final GameEndService gameEndService;
 
     /**
-     * 3초마다 PLAYING 세션들의 heartbeat 존재 여부를 확인한다.
-     * - heartbeat 키가 없으면 → DISCONNECTED로 endSession 처리
+     * [1] Heartbeat 체크
+     * - 3초마다 PLAYING 세션 중 heartbeat 키가 없는 세션을 강제 종료
+     * - 네트워크 단절 / 브라우저 종료 대응
      */
     @Scheduled(fixedDelay = 3000)
     public void checkHeartbeat() {
@@ -32,7 +32,9 @@ public class HeartbeatMonitor {
             return;
 
         for (String sessionKey : sessionKeys) {
+            // play:session:{sessionId} → sessionId
             String sessionId = sessionKey.replace("play:session:", "");
+
             Boolean alive = redisTemplate.hasKey("play:heartbeat:" + sessionId);
 
             if (Boolean.FALSE.equals(alive)) {
@@ -43,8 +45,8 @@ public class HeartbeatMonitor {
     }
 
     /**
-     * Redis TTL 만료 이벤트 누락 대비용 TIMEOUT fallback
-     * - TTL 이벤트가 안 들어와도 게임이 끝나도록 보장
+     * [2] TTL 만료 이벤트 누락 대비 fallback
+     * - Redis keyspace notification이 안 와도 게임 종료를 보장
      */
     @Scheduled(fixedDelay = 3000)
     public void timeoutFallbackCheck() {
@@ -63,11 +65,11 @@ public class HeartbeatMonitor {
 
             PlaySessionRedis session = JsonUtils.fromJson(raw, PlaySessionRedis.class);
 
+            // expireAt 기준 TIMEOUT 판단
             if (session.getExpireAt() <= now) {
                 log.info("TIMEOUT fallback triggered. sessionId={}", sessionId);
                 gameEndService.endSession(sessionId, EndReason.TIMEOUT);
             }
         }
     }
-
 }

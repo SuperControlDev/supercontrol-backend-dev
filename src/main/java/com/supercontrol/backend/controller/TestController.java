@@ -22,7 +22,7 @@ public class TestController {
     @PostMapping("/create-session")
     public String createSession(
             @RequestParam String sessionId,
-            @RequestParam String machineId,
+            @RequestParam Long machineId,
             @RequestParam(defaultValue = "30") long ttlSeconds) {
         long now = System.currentTimeMillis();
 

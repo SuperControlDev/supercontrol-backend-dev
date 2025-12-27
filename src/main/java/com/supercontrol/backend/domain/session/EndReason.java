@@ -12,5 +12,7 @@ public enum EndReason {
     DISCONNECTED,
 
     /** 서버 강제 종료 */
-    SERVER_FORCE
+    SERVER_FORCE,
+
+    USER_EXIT
 }
