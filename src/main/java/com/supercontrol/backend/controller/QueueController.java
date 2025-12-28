@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.supercontrol.backend.dto.QueueStatusResponse;
+import com.supercontrol.backend.dto.ReservedCheckResponse;
 import com.supercontrol.backend.repository.MachineRepository;
 import com.supercontrol.backend.repository.UserRepository;
 import com.supercontrol.backend.service.QueueService;
@@ -25,6 +26,9 @@ public class QueueController {
     private final UserRepository userRepository;
     private final MachineRepository machineRepository;
 
+    /**
+     * 대기열 진입
+     */
     @PostMapping("/enter")
     public ResponseEntity<?> enter(
             @RequestParam String userId,
@@ -50,13 +54,17 @@ public class QueueController {
                         "message", "QUEUE_ENTERED"));
     }
 
+    /**
+     * reserved_check (FE polling 전용)
+     */
     @GetMapping("/reserved_check")
-    public ResponseEntity<QueueStatusResponse> check(
+    public ResponseEntity<QueueStatusResponse> reservedCheck(
             @RequestParam String userId,
             @RequestParam Long machineId) {
-        QueueStatusResponse response = queueService.checkStatus(userId, machineId);
 
-        return ResponseEntity.ok(response);
+        QueueStatusResponse status = queueService.checkStatus(userId, machineId);
+
+        return ResponseEntity.ok(status);
     }
 
 }

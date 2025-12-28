@@ -16,13 +16,21 @@ public class PlaySession {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "session_id")
     private Long sessionId;
 
-    @ManyToOne
+    /**
+     * ✅ Redis 세션 ID (외부 공개/실시간 제어용)
+     * - GameEndService는 play:session:{redisSessionId} 형태로 종료 처리하므로 반드시 필요
+     */
+    @Column(name = "redis_session_id", nullable = false, unique = true, length = 64)
+    private String redisSessionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "machine_id", nullable = false)
     private Machine machine;
 
@@ -38,8 +46,12 @@ public class PlaySession {
     @Column(name = "duration_sec", nullable = false)
     private Integer durationSec;
 
+    @Column(name = "ended")
     private boolean ended;
+
+    @Column(name = "ended_at")
     private Long endedAt;
 
-    private String endReason; // USER_EXIT, TIMEOUT
+    @Column(name = "end_reason")
+    private String endReason; // USER_EXIT, TIMEOUT 등
 }

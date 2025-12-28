@@ -3,19 +3,25 @@ package com.supercontrol.backend.service;
 import com.supercontrol.backend.domain.Machine;
 import com.supercontrol.backend.domain.PlaySession;
 import com.supercontrol.backend.domain.User;
+import com.supercontrol.backend.domain.redis.PlaySessionRedis;
+import com.supercontrol.backend.domain.session.PlaySessionStatus;
 import com.supercontrol.backend.dto.GameStartRequest;
 import com.supercontrol.backend.dto.GameStartResponse;
 import com.supercontrol.backend.redis.RedisLuaExecutor;
 import com.supercontrol.backend.repository.MachineRepository;
 import com.supercontrol.backend.repository.PlaySessionRepository;
 import com.supercontrol.backend.repository.UserRepository;
+import com.supercontrol.backend.util.JsonUtils;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -26,29 +32,27 @@ public class GameService {
         private final PlaySessionRepository playSessionRepository;
         private final RedisLuaExecutor redisLuaExecutor;
 
+        // ✅ Redis 세션 저장용
+        private final StringRedisTemplate redisTemplate;
+
         /**
          * 게임 시작
          *
          * ✅ 핵심 정책
          * - startToken 없이는 start 불가
          * - startToken은 1회용 + TTL
-         * - Redis(Lua)에서 ready 상태 + 토큰 바인딩 검증 통과해야만
-         * DB 로직(코인 차감 / 세션 생성)이 실행됨
+         * - Redis(Lua)에서 ready 상태 + 토큰 바인딩 검증 통과해야만 DB 로직 실행
          *
-         * ✅ Lua 반환 규약(매우 중요)
+         * ✅ Lua 반환 규약
          * - 성공: queueEntryId (문자열)
-         * - 실패: "ERR_..." 로 시작하는 문자열 (또는 null)
-         *
-         * 팁
-         * - Lua 성공 값을 "OK"로 비교하면 절대 안 됩니다.
-         * 성공 값은 queueEntryId 자체입니다.
+         * - 실패: "ERR_..." prefix 또는 null
          */
         @Transactional
         public GameStartResponse startGame(GameStartRequest request) {
 
                 /*
                  * =====================================================
-                 * 0️⃣ Redis Gate (보안/정합성 관문) - 수정 핵심
+                 * 0️⃣ Redis Gate (Lua) - 기존 유지
                  * =====================================================
                  */
                 String luaResult = redisLuaExecutor.executeGameStart(
@@ -56,7 +60,6 @@ public class GameService {
                                 request.getUserId(),
                                 request.getMachineId());
 
-                // ✅ 실패 판단 규칙: null 또는 "ERR_" prefix
                 if (luaResult == null || luaResult.startsWith("ERR_")) {
                         return GameStartResponse.builder()
                                         .success(false)
@@ -64,15 +67,12 @@ public class GameService {
                                         .build();
                 }
 
-                // ✅ 성공 시 luaResult 자체가 queueEntryId
-                String queueEntryId = luaResult; // (현재는 사용처가 없지만, 추후 이력/로그/추적에 활용 가능)
-
-                // 팁: 문제 추적용으로 남겨두면 운영 때 매우 유용합니다.
+                String queueEntryId = luaResult;
                 System.out.println("[SuperCon Log] start approved. queueEntryId = " + queueEntryId);
 
                 /*
                  * =====================================================
-                 * 1️⃣ 사용자 조회 (기존 기능 유지)
+                 * 1️⃣ 사용자 조회 (기존 유지)
                  * =====================================================
                  */
                 User user = userRepository.findById(request.getUserId())
@@ -80,56 +80,87 @@ public class GameService {
 
                 /*
                  * =====================================================
-                 * 2️⃣ 기계 조회 (기존 기능 유지)
+                 * 2️⃣ 기계 조회 (기존 유지)
                  * =====================================================
                  */
                 Machine machine = machineRepository.findById(request.getMachineId())
                                 .orElseThrow(() -> new RuntimeException("MACHINE_NOT_FOUND"));
 
-                System.out.println("유저 잔액 : " + user.getBalance());
-                System.out.println("기계 사용료 : " + machine.getPrice());
-
                 /*
                  * =====================================================
-                 * 3️⃣ 잔액 확인 (기존 기능 유지)
+                 * 3️⃣ free_ticket 확인/차감 (요청사항 반영)
                  * =====================================================
                  */
-                if (user.getBalance() < machine.getPrice()) {
+                if (user.getFreeTickets() <= 0) {
                         return GameStartResponse.builder()
                                         .success(false)
-                                        .reason("NOT_ENOUGH_COINS")
-                                        .remainingCoins(user.getBalance())
+                                        .reason("NOT_ENOUGH_FREE_TICKET")
+                                        .remainingFreeTickets(user.getFreeTickets())
                                         .build();
                 }
 
-                /*
-                 * =====================================================
-                 * 4️⃣ 코인 차감 (기존 기능 유지)
-                 * =====================================================
-                 */
-                user.setBalance(user.getBalance() - machine.getPrice());
+                user.setFreeTickets(user.getFreeTickets() - 1);
                 userRepository.save(user);
 
                 /*
                  * =====================================================
-                 * 5️⃣ 플레이 세션 생성 (기존 기능 유지)
-                 * - durationSec = 45초 고정
+                 * 4️⃣ ✅ Redis 세션 ID 생성 (핵심)
+                 * - 외부(FE)에서 end 호출 시 사용할 값
                  * =====================================================
                  */
+                String redisSessionId = UUID.randomUUID().toString();
+
+                /*
+                 * =====================================================
+                 * 5️⃣ DB PlaySession 생성 (기존 유지 + redisSessionId만 추가)
+                 * =====================================================
+                 */
+                int durationSec = 45;
+
                 PlaySession session = PlaySession.builder()
+                                .redisSessionId(redisSessionId)
                                 .user(user)
                                 .machine(machine)
                                 .startTime(LocalDateTime.now())
                                 .endTime(null)
                                 .status("active")
-                                .durationSec(45)
+                                .durationSec(durationSec)
+                                .ended(false)
+                                .endedAt(null)
+                                .endReason(null)
                                 .build();
 
-                playSessionRepository.save(session);
+                session = playSessionRepository.save(session);
 
                 /*
                  * =====================================================
-                 * 6️⃣ Response 생성 (기존 기능 유지)
+                 * 6️⃣ ✅ Redis play:session:{redisSessionId} 저장 (GameEndService와 정합)
+                 * =====================================================
+                 */
+                long startAt = System.currentTimeMillis();
+                long expireAt = startAt + (durationSec * 1000L);
+
+                PlaySessionRedis redisSession = new PlaySessionRedis(
+                                redisSessionId,
+                                user.getUserId(),
+                                machine.getMachineId(),
+                                startAt,
+                                expireAt,
+                                PlaySessionStatus.PLAYING);
+
+                // TTL은 durationSec + 여유(예: 30초)
+                Duration ttl = Duration.ofSeconds(durationSec + 30L);
+
+                redisTemplate.opsForValue().set(
+                                "play:session:" + redisSessionId,
+                                JsonUtils.toJson(redisSession),
+                                ttl);
+
+                /*
+                 * =====================================================
+                 * 7️⃣ Response 생성
+                 * - sessionId: ✅ Redis 세션 ID(String)
+                 * - dbSessionId: 기존 기능 호환용
                  * =====================================================
                  */
                 long startTimeMillis = session.getStartTime()
@@ -139,10 +170,14 @@ public class GameService {
 
                 return GameStartResponse.builder()
                                 .success(true)
+                                // legacy 필드 유지(사용 안 하면 0으로 둬도 됨)
                                 .remainingCoins(user.getBalance())
+                                .remainingFreeTickets(user.getFreeTickets())
+                                .reason(null)
                                 .gameStartTime(startTimeMillis)
-                                .durationSec(session.getDurationSec())
-                                .sessionId(session.getSessionId())
+                                .durationSec(durationSec)
+                                .sessionId(redisSessionId) // ✅ FE/End는 이 값 사용
+                                .dbSessionId(session.getSessionId()) // ✅ 필요 시만 사용
                                 .build();
         }
 }
