@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:mysql://<STG-RDS-ENDPOINT>:3306/supercontrol_stg
+    username: stg_user
+    password: stg_password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false

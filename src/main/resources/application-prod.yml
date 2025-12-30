@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:mysql://<PROD-RDS-ENDPOINT>:3306/supercontrol_prod
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
